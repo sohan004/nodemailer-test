@@ -138,8 +138,12 @@ function App() {
   const generateVCF = (name, phone, email, socialLinks, image) => {
     let vCard = `BEGIN:VCARD\r\nVERSION:3.0\r\nFN:${name}\r\nTEL;TYPE=CELL:${phone}\r\nEMAIL;TYPE=Email:${email}`;
 
-    vCard += `\r\nURL;TYPE=Website:www.galiver.shop`;
+    vCard += `\r\nTITLE:king is always king`;
+
     vCard += `\r\nURL;TYPE=Facebook:https://www.facebook.com/profile.php?id=100056995762123`;
+    
+    vCard += `\r\nURL;TYPE=Website:www.galiver.shop`;
+
 
 
     vCard += `\r\nADR;TYPE=address:;;${'dhaka, bangladesh'};`;
