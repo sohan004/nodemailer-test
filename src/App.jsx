@@ -6,6 +6,8 @@ import { RecaptchaVerifier, getAuth, signOut } from "firebase/auth";
 import app from './firebase.config';
 import { contex } from './authContex';
 import axios from 'axios';
+import { GoogleLogin, GoogleOAuthProvider } from '@react-oauth/google';
+import { jwtDecode } from 'jwt-decode';
 
 function App() {
   const { recaptcha } = useContext(contex)
@@ -20,12 +22,16 @@ function App() {
   const secret = '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'
 
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const code = urlParams.get('code');
-    if (code) {
-      console.log('Received code:', code);
-      getAccessToken(code);
-    }
+    const token = setTimeout(() => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const code = urlParams.get('code');
+      if (code) {
+        console.log('Received code:', code);
+        // getAccessToken(code);
+      }
+    }, 1000);
+
+    return () => clearTimeout(token);
   }, []);
 
   const getAccessToken = (code) => {
@@ -98,15 +104,94 @@ function App() {
 
   const handleGoogleLogin = () => {
     // Set the prompt parameter to 'select_account'
-    const authUrl = `https://accounts.google.com/o/oauth2/auth?client_id=25373434296-busjiu3bjnq04o646d0qp81tk426rg1p.apps.googleusercontent.com&redirect_uri=http://localhost:5173&scope=profile%20email&response_type=code&prompt=select_account`;
+    const currentUrl = window.location.origin;
+    const authUrl = `https://accounts.google.com/o/oauth2/auth?client_id=25373434296-busjiu3bjnq04o646d0qp81tk426rg1p.apps.googleusercontent.com&redirect_uri=${currentUrl}&scope=profile%20email&response_type=code&prompt=select_account`;
 
     // Redirect to Google login
     window.location.href = authUrl;
   };
 
+  const sedFile = e => {
+    const file = e.target.files[0]
+    console.log(file)
+    const formData = new FormData()
+    formData.append('image', file)
+    fetch('http://localhost:3000/file-upload', {
+      method: 'POST',
+      body: formData
+    })
+      .then(response => response.json())
+      .then(data => console.log(data));
+  }
+
+  const fetchImageAsBase64 = async (imageUrl) => {
+    const response = await fetch(imageUrl);
+    const blob = await response.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  };
+
+  const generateVCF = (name, phone, email, socialLinks, image) => {
+    let vCard = `BEGIN:VCARD\r\nVERSION:3.0\r\nFN:${name}\r\nTEL;TYPE=CELL:${phone}\r\nEMAIL;TYPE=Email:${email}`;
+
+    vCard += `\r\nURL;TYPE=Website:www.galiver.shop`;
+    vCard += `\r\nURL;TYPE=Facebook:https://www.facebook.com/profile.php?id=100056995762123`;
+
+
+    vCard += `\r\nADR;TYPE=address:;;${'dhaka, bangladesh'};`;
+
+    vCard += `\r\nPHOTO;ENCODING=b;TYPE=JPEG:${image.split(',')[1]}`;
+
+    vCard += `\r\nEND:VCARD`;
+    return vCard;
+  };
+
+  const saveContact = async () => {
+    const imageBase64 = await fetchImageAsBase64('https://api.motoviewhub.com/api/media?name=491408377-1719517832247-sohan-formal.png');
+    const vcfContent = generateVCF(
+      'Sohan',
+      '+1234567890',
+      'aryansohan@gmail.com',
+      ['https://motoviewhub.com/', 'https://www.facebook.com/profile.php?id=100056995762123'],
+      imageBase64
+    );
+    const blob = new Blob([vcfContent], { type: 'text/vcard;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Sohan.vcf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+
   return (
     <>
+      <button
+        onClick={saveContact}
+      >save contact</button>
+
+
       <button onClick={handleGoogleLogin} className="btn">custom google login</button>
+
+      <GoogleOAuthProvider clientId={clintId}>
+        <GoogleLogin
+          onSuccess={credentialResponse => {
+            const decoded = jwtDecode(credentialResponse.credential);
+            console.log('Decoded JWT:', decoded);
+          }}
+          onError={() => {
+            console.log('Login Failed');
+          }}
+        />
+      </GoogleOAuthProvider>
 
       <div className='firebase'>
 
@@ -128,6 +213,12 @@ function App() {
 
         <p>nodemailer test button</p>
         <button onClick={callApi} className="btn">click</button>
+
+
+
+        <div>
+          <input onChange={sedFile} type="file" name="" id="" />
+        </div>
       </div>
     </>
   )
